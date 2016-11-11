@@ -1,0 +1,12 @@
+Source: live-usb-maker-gui
+Section: system
+Priority: required
+Maintainer: anticapitalista <antiX@operamail.com>
+Build-Depends: debhelper (>= 9.20120115)
+Standards-Version: 3.9.4
+Homepage: http://antix.mepis.org
+
+Package: live-usb-maker-gui
+Architecture: all
+Depends: live-usb-maker, cli-shell-utils, yad, udev, udisks2 
+Description: Gui front end to live-usb-makerto create an antiX/MX LiveUSB.         

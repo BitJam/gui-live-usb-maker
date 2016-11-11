@@ -1,0 +1,195 @@
+#!/bin/bash
+
+##Original Code by dolphin_oracle November 8 2016 (dolphinoracle@gmail.com)
+##License is GPL 3.0
+##originally developed for antiX and mx linux.
+
+##depends on live-usb-maker and yad
+
+##user that launched the app
+
+launch_user=$(ps -aux |grep -v grep|grep -m 1 su-to-root|awk '{print $1}')
+echo "launch user is " $launch_user
+
+##translations
+
+TEXTDOMAINDIR=/usr/share/locale 
+TEXTDOMAIN=live-usb-maker-gui
+
+TITLE=$"Live-USB Maker GUI"
+CHOOSE_USB=$"Choose USB Device"
+CHOOSE_ISO=$"Choose ISO"
+INFO=$"Information"
+BAD_SOURCE=$"Source is not an ISO file.  Please choose another file."
+DESCRIPTION=$"Simple GUI for Live-USB Maker"
+VERSION=$"Version"
+USB_CHECK=$"No USB device detected.  Please insert a device and try again"
+LICENSE=$"License"
+APPLY=$"Apply"
+CLOSE=$"Close"
+ABOUT=$"About"
+HELP=$"Help"
+ADVANCE=$"Advanced"
+
+#define functions
+
+display_selections()
+{
+# populate variables
+
+unset usb_list
+#build list for usb_device selection box
+for i in $( find  /dev/ -name sd? |cut -d '/' -f3); do
+	test=$(udevadm info --query=property --path=/sys/block/$i | grep ID_BUS=usb)
+	if [ "$test" = "ID_BUS=usb" ]; then
+		vendor=$(udevadm info --query=property --path=/sys/block/$i |grep ID_VENDOR= |cut -d '=' -f2)
+		model=$(udevadm info --query=property --path=/sys/block/$i |grep ID_MODEL= |cut -d '=' -f2)
+		echo $i $vendor $model
+		if [ "$i" != "" ]; then
+		usb_list="$i $vendor $model!"$usb_list
+		fi
+	fi
+done
+
+if [ "$usb_device" != "" ]; then
+usb_list=$usb_device!$usb_list
+fi
+
+if [ "$usb_list" = "" ]; then
+yad --form --title=$INFO --button=gtk-ok --text="$USB_CHECK" --buttons-layout=center
+exit 0
+fi
+
+
+echo "usb_list is " $usb_list
+echo ""
+
+# get user selections with above for defaults
+
+#display selection dialog
+
+selections=$(yad --window-icon=drive-removable-media-usb --form --button=$ADVANCE!drive-removable-media-usb!:6 --button=$ABOUT!help-about!:3 --button=$HELP!help-contents!:4 --button=$APPLY!emblem-default!:0 --button=$CLOSE!gtk-close!:1 --width=300 --title="$TITLE" \
+	--field="<b>$TITLE</b>":LBL ""\
+	--field="$CHOOSE_USB":CB "$usb_list"\
+	--field="$CHOOSE_ISO":FL "none" \
+	--field="":LBL "")
+
+# parse user selections into something xfconf can deal with
+}
+
+actions()
+{
+status2=$?
+
+case $status2 in
+
+	0) adjust_settings
+		   ;;
+	1) quit
+		   ;;
+	3) display_about
+	           ;;
+	4) display_help
+	           ;;
+	5) display_license
+		   ;;
+	6) advanced_mode
+esac
+}
+
+advanced_mode()
+{
+
+x-terminal-emulator -e "live-usb-maker"
+actionstatus=1
+
+}
+
+
+adjust_settings()
+{
+
+echo $selections
+
+usb_device=$(echo $selections|cut -d "|" -f2|cut -d " " -f1)
+source=$(echo $selections|cut -d "|" -f3)
+
+echo "usb_device is " $usb_device
+echo "source is " $source
+
+#check to make sure source is a iso
+
+iso_check=$(file "$source" |grep iso)
+echo $iso_check
+if [ "$iso_check" != "" ]; then
+	echo "is a iso file"
+	echo "live-usb-maker simple -F umount -f "$source" -t /dev/$usb_device "
+	x-terminal-emulator -e "live-usb-maker simple -F umount -f '$source' -t /dev/$usb_device"
+	else
+	echo "not a iso file"
+	yad --form --title=$INFO --button=gtk-ok --text="$BAD_SOURCE" --buttons-layout=center
+fi
+
+actionstatus=0
+}
+
+
+display_about()
+{
+
+
+info=$(yad --selectable-labels --window-icon=drive-removable-media-usb --align=center --form --button=$LICENSE:5 --button=OK:0 --width=300 --title="About Live-USB Maker GUI"\
+	--field="<b>$TITLE</b>":LBL ""\
+	--field=" ":LBL " "\
+	--field="$VERSION 16.11":LBL ""\
+	--field=" ":LBL " "\
+	--field="<b>$DESCRIPTION</b>":LBL ""\
+	--field=" ":LBL " "\
+	--field="http://mepis.antix.org":BTN "su $launch_user -c 'xdg-open http://antix.mepis.org'"\
+	--field="http://mxlinux.org":BTN "su $launch_user -c 'xdg-open https://mxlinux.org'"\
+	--field=" ":LBL " "\
+	--field="copyright (c) antiX":LBL "")
+
+case $? in
+
+	0) actionstatus=0
+	;;
+	5) display_license
+	;;
+esac
+}	
+	
+display_help()
+{
+su $launch_user -c "xdg-open https://mxlinux.org/wiki/help-files/help-live-usb-maker &"
+actionstatus=0
+}
+
+display_license()
+{
+su $launch_user -c "xdg-open https://mxlinux.org/wiki/licenses/license-live-usb-maker &"
+display_about
+}
+
+quit()
+{
+echo quit
+actionstatus=1
+}
+
+
+###initialize app 
+
+
+##initialize app complete
+
+##start gui and run actions
+
+status=0
+while [ $status = "0" ]; do
+	display_selections
+	actions
+	status=$actionstatus
+done
+
+
