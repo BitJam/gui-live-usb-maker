@@ -6,11 +6,6 @@
 
 ##depends on live-usb-maker and yad
 
-##user that launched the app
-
-launch_user=$(ps -aux |grep -v grep|grep -m 1 su-to-root|awk '{print $1}')
-echo "launch user is " $launch_user
-
 ##translations
 
 TEXTDOMAINDIR=/usr/share/locale 
@@ -30,6 +25,8 @@ CLOSE=$"Close"
 ABOUT=$"About"
 HELP=$"Help"
 ADVANCE=$"Advanced"
+
+##-----------------------------------------------------
 
 #define functions
 
@@ -119,9 +116,7 @@ echo "source is " $source
 
 #check to make sure source is a iso
 
-iso_check=$(file "$source" |grep iso)
-echo $iso_check
-if [ "$iso_check" != "" ]; then
+if [ $(file "$source" |grep -i -q iso && echo $?) = 0 ]; then
 	echo "is a iso file"
 	echo "live-usb-maker simple -F umount -f "$source" -t /dev/$usb_device "
 	x-terminal-emulator -e "live-usb-maker simple -F umount -f '$source' -t /dev/$usb_device"
@@ -177,13 +172,13 @@ echo quit
 actionstatus=1
 }
 
-
-###initialize app 
-
-
-##initialize app complete
+main()
+{
 
 ##start gui and run actions
+##user that launched the app
+launch_user=$(ps -aux |grep -v grep|grep -m 1 su-to-root|awk '{print $1}')
+echo "launch user is " $launch_user
 
 status=0
 while [ $status = "0" ]; do
@@ -191,5 +186,9 @@ while [ $status = "0" ]; do
 	actions
 	status=$actionstatus
 done
+}
 
+#launch gui
+
+main "$@"
 
